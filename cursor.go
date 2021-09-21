@@ -25,7 +25,15 @@ func (c *Cursor) Serialize(dest interface{}) error {
 		name := columnNames[idx]
 		//ft := sqlTypes[idx]
 
-		v := string(value.([]byte))
+		v := ""
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					v = ""
+				}
+			}()
+			v = string(value.([]byte))
+		}()
 
 		if v == "0" {
 			m.Set(name, 0)

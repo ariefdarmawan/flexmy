@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"git.kanosolution.net/kano/dbflex"
 	"git.kanosolution.net/kano/dbflex/drivers/rdbms"
@@ -166,3 +167,30 @@ func (q *Query) SQL(string cmd, exec) dbflex.IQuery {
 	swicth()
 }
 */
+
+func (q *Query) ValueToSQlValue(v interface{}) string {
+	switch v.(type) {
+	case int, int8, int16, int32, int64:
+		return toolkit.Sprintf("%d", v)
+	case float32, float64:
+		return toolkit.Sprintf("%f", v)
+	case time.Time:
+		return toolkit.Date2String(v.(time.Time), "'yyyy-MM-dd HH:mm:ss T'")
+	case *time.Time:
+		dt := v.(*time.Time)
+		return toolkit.Date2String(*dt, "'yyyy-MM-dd HH:mm:ss T'")
+	case bool:
+		if v.(bool) {
+			return "true"
+		}
+		return "false"
+	case string:
+		return toolkit.Sprintf("'%s'", v.(string))
+	default:
+		return toolkit.Sprintf("'%s'", CleanupSQL(fmt.Sprintf("%v", toolkit.JsonString(v))))
+	}
+}
+
+func CleanupSQL(s string) string {
+	return strings.Replace(s, "'", "''", -1)
+}
