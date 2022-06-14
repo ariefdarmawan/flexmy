@@ -82,7 +82,7 @@ func (c *Connection) DropTable(name string) error {
 
 // EnsureTable ensure existence and structures of the table
 func (c *Connection) EnsureTable(name string, keys []string, obj interface{}) error {
-	cmd := fmt.Sprintf("select table_name from information_schema.TABLES t where table_type='BASE TABLE' and table_name='%s'", name)
+	cmd := fmt.Sprintf("select table_name from information_schema.TABLES t where table_type='BASE TABLE' and table_name='%s'", strings.ToLower(name))
 	rs, err := c.db.Query(cmd)
 	if err != nil {
 		return fmt.Errorf("unable to check table existence. %s", err.Error())
@@ -93,71 +93,128 @@ func (c *Connection) EnsureTable(name string, keys []string, obj interface{}) er
 	for rs.Next() {
 		tbname := ""
 		rs.Scan(&tbname)
-		tableExists = tbname == name
-		break
+		tableExists = strings.ToLower(tbname) == strings.ToLower(name)
 	}
 
-	v := reflect.Indirect(reflect.ValueOf(obj))
-	t := v.Type()
-
 	if !tableExists {
-		//-- create table
-		cmd = "CREATE TABLE %s (\n%s\n)"
-
-		fieldNum := t.NumField()
-		fields := make([]string, fieldNum)
-		idx := 0
-		for idx < fieldNum {
-			ft := t.Field(idx)
-			dataType := "VARCHAR(200)"
-			ftName := strings.ToLower(ft.Type.Name())
-			if strings.HasPrefix(ftName, "int") {
-				dataType = "INT"
-			} else if strings.HasPrefix(ftName, "float") {
-				dataType = "REAL"
-			} else if strings.HasPrefix(ftName, "time") {
-				dataType = "DATETIME"
-			}
-			ftxt := fmt.Sprintf("%s %s", ft.Name, dataType)
-			if toolkit.HasMember(keys, ft.Name) {
-				ftxt = ftxt + " NOT NULL PRIMARY KEY"
-			}
-			fields[idx] = ftxt
-			idx++
-		}
-		cmd = fmt.Sprintf(cmd, name, strings.Join(fields, ",\n"))
-		//fmt.Println("command:\n", cmd)
+		cmd := createCommandForCreate(name, keys, obj)
 		_, err = c.db.Exec(cmd)
 		if err != nil {
 			return fmt.Errorf("unable to created table %s. %s", name, err.Error())
 		}
 	} else {
-		//fmt.Println("table", name, "is exist")
-		fieldNum := t.NumField()
-		idx := 0
-		for idx < fieldNum {
-			ft := t.Field(idx)
-			dataType := "VARCHAR(200)"
-			ftName := strings.ToLower(ft.Type.Name())
-			if strings.HasPrefix(ftName, "int") {
-				dataType = "INT"
-			} else if strings.HasPrefix(ftName, "float") {
-				dataType = "REAL"
-			} else if strings.HasPrefix(ftName, "time") {
-				dataType = "DATETIME"
-			}
-			columnDef := fmt.Sprintf("%s", dataType)
-			cmd := fmt.Sprintf("alter table %s modify %s %s",
-				name, ft.Name, columnDef)
-			_, err := c.db.Exec(cmd)
+		sql := createCommandForUpdate(name, keys, obj, c)
+		if sql != "" {
+			_, err = c.db.Exec(sql)
 			if err != nil {
-				return fmt.Errorf("unable to modify %s.%s, %s",
-					name, ft.Name, err.Error())
+				return fmt.Errorf("unable to alter table %s. %s", name, err.Error())
 			}
-			idx++
 		}
 	}
 	return nil
+}
+
+func createCommandForCreate(name string, keys []string, obj interface{}) string {
+	v := reflect.Indirect(reflect.ValueOf(obj))
+	t := v.Type()
+
+	cmd := "CREATE TABLE %s (\n%s\n)"
+	fieldNum := v.NumField()
+	fields := []string{}
+	for idx := 0; idx < fieldNum; idx++ {
+		ft := t.Field(idx)
+		alias := ft.Tag.Get(toolkit.TagName())
+		if alias == "-" {
+			continue
+		}
+		fieldName := ft.Name
+		if alias != "" {
+			fieldName = alias
+		}
+		ftName := strings.ToLower(ft.Name)
+		dataType := getDataType(ftName)
+		ftxt := fmt.Sprintf("%s %s", fieldName, dataType)
+		if toolkit.HasMember(keys, fieldName) {
+			ftxt = ftxt + " NOT NULL PRIMARY KEY"
+		}
+		fields = append(fields, ftxt)
+	}
+	cmd = fmt.Sprintf(cmd, name, strings.Join(fields, ",\n"))
+	return cmd
+}
+
+func createCommandForUpdate(name string, keys []string, obj interface{}, c *Connection) string {
+	// get all fields from existing
+	type fieldMeta struct {
+		Field   string
+		Type    string
+		Null    string
+		Key     string
+		Default string
+		Extra   string
+	}
+
+	fields := map[string]fieldMeta{}
+	describe := "describe " + name
+	rows, _ := c.db.Query(describe)
+	for rows.Next() {
+		f := fieldMeta{}
+		rows.Scan(&(f.Field), &(f.Type), &(f.Null), &(f.Key), &(f.Default), &(f.Extra))
+		fields[f.Field] = f
+	}
+	fmt.Println(fields)
+
+	v := reflect.Indirect(reflect.ValueOf(obj))
+	t := v.Type()
+
+	cmds := []string{}
+
+	fieldNum := t.NumField()
+	for idx := 0; idx < fieldNum; idx++ {
+		ft := t.Field(idx)
+		fieldName := ft.Name
+		alias := ft.Tag.Get(toolkit.TagName())
+		if alias == "-" {
+			continue
+		}
+		if alias != "" {
+			fieldName = alias
+		}
+
+		dataType := getDataType(ft.Type.Name())
+		columnDef := fmt.Sprintf("%s", dataType)
+		meta, hasField := fields[fieldName]
+		if !hasField {
+			cmd := fmt.Sprintf("add %s %s", fieldName, columnDef)
+			cmds = append(cmds, cmd)
+		} else if dataType != meta.Type {
+			cmd := fmt.Sprintf("modify %s %s", fieldName, columnDef)
+			cmds = append(cmds, cmd)
+		}
+	}
+
+	if len(cmds) > 0 {
+		sql := fmt.Sprintf("alter table %s ", name)
+		sql += strings.Join(cmds, ", ")
+		return sql
+		//fmt.Println(sql)
+	}
+
+	return ""
+}
+
+func getDataType(ftName string) string {
+	dataType := "varchar(200)"
+	if strings.HasPrefix(ftName, "int") {
+		dataType = "int"
+	} else if strings.HasPrefix(ftName, "float") {
+		dataType = "real"
+	} else if strings.HasPrefix(ftName, "time") {
+		dataType = "datetime"
+	} else if strings.HasPrefix(ftName, "bool") {
+		dataType = "tinyint(1)"
+	}
+	return dataType
 }
 
 func (c *Connection) BeginTx() error {

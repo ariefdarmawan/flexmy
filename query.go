@@ -175,10 +175,10 @@ func (q *Query) ValueToSQlValue(v interface{}) string {
 	case float32, float64:
 		return toolkit.Sprintf("%f", v)
 	case time.Time:
-		return toolkit.Date2String(v.(time.Time), "'yyyy-MM-dd HH:mm:ss T'")
+		return toolkit.Date2String(v.(time.Time), "'yyyy-MM-dd HH:mm:ss'")
 	case *time.Time:
 		dt := v.(*time.Time)
-		return toolkit.Date2String(*dt, "'yyyy-MM-dd HH:mm:ss T'")
+		return toolkit.Date2String(*dt, "'yyyy-MM-dd HH:mm:ss'")
 	case bool:
 		if v.(bool) {
 			return "true"
