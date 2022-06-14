@@ -162,7 +162,7 @@ func createCommandForUpdate(name string, keys []string, obj interface{}, c *Conn
 		rows.Scan(&(f.Field), &(f.Type), &(f.Null), &(f.Key), &(f.Default), &(f.Extra))
 		fields[f.Field] = f
 	}
-	fmt.Println(fields)
+	//fmt.Println(fields)
 
 	v := reflect.Indirect(reflect.ValueOf(obj))
 	t := v.Type()
