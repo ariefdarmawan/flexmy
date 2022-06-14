@@ -52,11 +52,11 @@ func (c *Cursor) CastValue(value interface{}, typeName string) (interface{}, err
 		} else {
 			typeName := strings.ToLower(typeName)
 			if strings.HasPrefix(typeName, "float32") {
-				d = toolkit.ToFloat32(d, 4, toolkit.RoundingAuto)
+				d = toolkit.ToFloat32(v, 4, toolkit.RoundingAuto)
 			} else if strings.HasPrefix(typeName, "float64") {
-				d = toolkit.ToFloat64(d, 4, toolkit.RoundingAuto)
+				d = toolkit.ToFloat64(v, 4, toolkit.RoundingAuto)
 			} else if strings.HasPrefix(typeName, "int") && !strings.HasPrefix(typeName, "interface") {
-				d = toolkit.ToInt(d, toolkit.RoundingAuto)
+				d = toolkit.ToInt(v, toolkit.RoundingAuto)
 			} else if strings.HasPrefix(typeName, "time") {
 				if dt, err := time.Parse(time.RFC3339, v); err == nil {
 					d = dt
