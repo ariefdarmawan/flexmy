@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eaciit/toolkit"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/sebarcode/codekit"
 	cv "github.com/smartystreets/goconvey/convey"
 )
 
@@ -67,8 +67,8 @@ func TestClassicMysql(t *testing.T) {
 					valuePtrs = append(valuePtrs, &values[idx])
 				}
 
-				fmt.Println("\ncolumns: ", toolkit.JsonString(columnNames),
-					"\ntypes:", toolkit.JsonString(sqlTypes))
+				fmt.Println("\ncolumns: ", codekit.JsonString(columnNames),
+					"\ntypes:", codekit.JsonString(sqlTypes))
 
 				cv.Convey("validating data", func() {
 					for {
@@ -78,23 +78,23 @@ func TestClassicMysql(t *testing.T) {
 								cv.So(scanErr, cv.ShouldBeNil)
 								break
 							}
-							//fmt.Println("values:", toolkit.JsonString(values))
-							m := toolkit.M{}
+							//fmt.Println("values:", codekit.JsonString(values))
+							m := codekit.M{}
 							for idx, v := range values {
 								name := columnNames[idx]
 								ft := sqlTypes[idx]
 								switch ft {
 								case "int":
-									m.Set(name, toolkit.ToInt(string(v), toolkit.RoundingAuto))
+									m.Set(name, codekit.ToInt(string(v), codekit.RoundingAuto))
 
 								case "float64":
-									m.Set(name, toolkit.ToFloat64(string(v), 4, toolkit.RoundingAuto))
+									m.Set(name, codekit.ToFloat64(string(v), 4, codekit.RoundingAuto))
 
 								case "time.Time":
 									if dt, err := time.Parse(time.RFC3339, string(v)); err == nil {
 										m.Set(name, dt)
 									} else {
-										dt = toolkit.String2Date(string(v), "yyyy-MM-dd hh:mm:ss")
+										dt = codekit.String2Date(string(v), "yyyy-MM-dd hh:mm:ss")
 										m.Set(name, dt)
 									}
 
@@ -102,7 +102,7 @@ func TestClassicMysql(t *testing.T) {
 									m.Set(name, string(v))
 								}
 							}
-							//toolkit.Println("data:", toolkit.JsonString(m))
+							//codekit.Println("data:", codekit.JsonString(m))
 						} else {
 							break
 						}
