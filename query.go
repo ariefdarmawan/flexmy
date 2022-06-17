@@ -2,13 +2,14 @@ package flexmy
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"git.kanosolution.net/kano/dbflex"
 	"git.kanosolution.net/kano/dbflex/drivers/rdbms"
-	"github.com/eaciit/toolkit"
+	"github.com/sebarcode/codekit"
 )
 
 // Query implementaion of dbflex.IQuery
@@ -20,19 +21,19 @@ type Query struct {
 }
 
 // Cursor produces a cursor from query
-func (q *Query) Cursor(in toolkit.M) dbflex.ICursor {
+func (q *Query) Cursor(in codekit.M) dbflex.ICursor {
 	cursor := new(Cursor)
 	cursor.SetThis(cursor)
 
 	ct := q.Config(dbflex.ConfigKeyCommandType, dbflex.QuerySelect).(string)
 	if ct != dbflex.QuerySelect && ct != dbflex.QuerySQL {
-		cursor.SetError(toolkit.Errorf("cursor is used for only select command"))
+		cursor.SetError(fmt.Errorf("cursor is used for only select command"))
 		return cursor
 	}
 
 	cmdtxt := q.Config(dbflex.ConfigKeyCommand, "").(string)
 	if cmdtxt == "" {
-		cursor.SetError(toolkit.Errorf("no command"))
+		cursor.SetError(fmt.Errorf("no command"))
 		return cursor
 	}
 
@@ -52,7 +53,7 @@ func (q *Query) Cursor(in toolkit.M) dbflex.ICursor {
 		rows, err = q.tx.Query(cmdtxt)
 	}
 	if rows == nil {
-		cursor.SetError(toolkit.Errorf("%s. SQL Command: %s", err.Error(), cmdtxt))
+		cursor.SetError(fmt.Errorf("%s. SQL Command: %s", err.Error(), cmdtxt))
 	} else {
 		cursor.SetFetcher(rows)
 	}
@@ -60,14 +61,14 @@ func (q *Query) Cursor(in toolkit.M) dbflex.ICursor {
 }
 
 // Execute will executes non-select command of a query
-func (q *Query) Execute(in toolkit.M) (interface{}, error) {
+func (q *Query) Execute(in codekit.M) (interface{}, error) {
 	cmdtype, ok := q.Config(dbflex.ConfigKeyCommandType, dbflex.QuerySelect).(string)
 	if !ok {
-		return nil, toolkit.Errorf("Operation is unknown. current operation is %s", cmdtype)
+		return nil, fmt.Errorf("Operation is unknown. current operation is %s", cmdtype)
 	}
 	cmdtxt := q.Config(dbflex.ConfigKeyCommand, "").(string)
 	if cmdtxt == "" && cmdtype != dbflex.QuerySave {
-		return nil, toolkit.Errorf("No command")
+		return nil, fmt.Errorf("No command")
 	}
 
 	var (
@@ -77,7 +78,7 @@ func (q *Query) Execute(in toolkit.M) (interface{}, error) {
 
 	data, hasData := in["data"]
 	if !hasData && !(cmdtype == dbflex.QueryDelete || cmdtype == dbflex.QuerySelect) {
-		return nil, toolkit.Error("non select and delete command should has data")
+		return nil, errors.New("non select and delete command should has data")
 	}
 
 	if hasData {
@@ -113,7 +114,7 @@ func (q *Query) Execute(in toolkit.M) (interface{}, error) {
 			return nil, fmt.Errorf("unable to get data for checking. %s", err.Error())
 		}
 
-		//fmt.Println("Filter:", toolkit.JsonString(filter))
+		//fmt.Println("Filter:", codekit.JsonString(filter))
 		var saveCmd dbflex.ICommand
 		if cursor.Count() == 0 {
 			saveCmd = dbflex.From(tableName).Where(filter.(*dbflex.Filter)).Insert()
@@ -127,7 +128,7 @@ func (q *Query) Execute(in toolkit.M) (interface{}, error) {
 	case dbflex.QueryInsert:
 		cmdtxt = strings.Replace(cmdtxt, "{{.FIELDS}}", strings.Join(sqlfieldnames, ","), -1)
 		cmdtxt = strings.Replace(cmdtxt, "{{.VALUES}}", strings.Join(sqlvalues, ","), -1)
-		//toolkit.Printfn("\nCmd: %s", cmdtxt)
+		//fmt.Printfn("\nCmd: %s", cmdtxt)
 
 	case dbflex.QueryUpdate:
 		//fmt.Println("fieldnames:", sqlfieldnames)
@@ -148,7 +149,7 @@ func (q *Query) Execute(in toolkit.M) (interface{}, error) {
 	}
 
 	if err != nil {
-		return nil, toolkit.Errorf("%s. SQL Command: %s", err.Error(), cmdtxt)
+		return nil, fmt.Errorf("%s. SQL Command: %s", err.Error(), cmdtxt)
 	}
 	return r, nil
 }
@@ -171,23 +172,23 @@ func (q *Query) SQL(string cmd, exec) dbflex.IQuery {
 func (q *Query) ValueToSQlValue(v interface{}) string {
 	switch v.(type) {
 	case int, int8, int16, int32, int64:
-		return toolkit.Sprintf("%d", v)
+		return fmt.Sprintf("%d", v)
 	case float32, float64:
-		return toolkit.Sprintf("%f", v)
+		return fmt.Sprintf("%f", v)
 	case time.Time:
-		return toolkit.Date2String(v.(time.Time), "'yyyy-MM-dd HH:mm:ss'")
+		return codekit.Date2String(v.(time.Time), "'yyyy-MM-dd HH:mm:ss'")
 	case *time.Time:
 		dt := v.(*time.Time)
-		return toolkit.Date2String(*dt, "'yyyy-MM-dd HH:mm:ss'")
+		return codekit.Date2String(*dt, "'yyyy-MM-dd HH:mm:ss'")
 	case bool:
 		if v.(bool) {
 			return "true"
 		}
 		return "false"
 	case string:
-		return toolkit.Sprintf("'%s'", v.(string))
+		return fmt.Sprintf("'%s'", v.(string))
 	default:
-		return toolkit.Sprintf("'%s'", CleanupSQL(fmt.Sprintf("%v", toolkit.JsonString(v))))
+		return fmt.Sprintf("'%s'", CleanupSQL(fmt.Sprintf("%v", codekit.JsonString(v))))
 	}
 }
 

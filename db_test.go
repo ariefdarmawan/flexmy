@@ -3,22 +3,21 @@ package flexmy_test
 import (
 	"errors"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"git.kanosolution.net/kano/dbflex"
-	"github.com/eaciit/toolkit"
+	"github.com/sebarcode/codekit"
 	cv "github.com/smartystreets/goconvey/convey"
 )
 
 var (
-	connString = "mysql://%s:%s@/testdb"
+	connString = "mysql://root:Database.1@/golang"
 	tableName  = "testmodel"
 )
 
 func init() {
-	connString = fmt.Sprintf(connString, os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASSWORD"))
+	//connString = fmt.Sprintf(connString, os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASSWORD"))
 }
 
 type dataObject struct {
@@ -34,17 +33,12 @@ func newDataObject(id string, group string) *dataObject {
 	do.ID = id
 	do.Title = "Title for " + id
 	do.DataGroup = group
-	do.DataDec = float64(toolkit.RandFloat(1000, 2))
+	do.DataDec = float64(codekit.RandFloat(1000, 2))
 	do.Created = time.Now()
 	return do
 }
 
 func connect() (dbflex.IConnection, error) {
-	dbflex.Logger().SetLevelStdOut(toolkit.ErrorLevel, true)
-	dbflex.Logger().SetLevelStdOut(toolkit.InfoLevel, true)
-	dbflex.Logger().SetLevelStdOut(toolkit.WarningLevel, true)
-	dbflex.Logger().SetLevelStdOut(toolkit.DebugLevel, true)
-
 	conn, err := dbflex.NewConnectionFromURI(connString, nil)
 	if err != nil {
 		return nil, errors.New("unable to connect. " + err.Error())
@@ -82,7 +76,7 @@ func TestQueryM(t *testing.T) {
 
 		cv.Convey("saving data", func() {
 			cmd := dbflex.From(tableName).Where(dbflex.Eq("id", "e1")).Save()
-			_, err := conn.Execute(cmd, toolkit.M{}.Set("data", &dataObject{"E1", "Emp01", 20.37, "", time.Now()}))
+			_, err := conn.Execute(cmd, codekit.M{}.Set("data", &dataObject{"E1", "Emp01", 20.37, "", time.Now()}))
 			cv.So(err, cv.ShouldBeNil)
 
 			cv.Convey("querying", func() {
@@ -92,7 +86,7 @@ func TestQueryM(t *testing.T) {
 				cv.So(cur.Error(), cv.ShouldBeNil)
 
 				cv.Convey("get results", func() {
-					ms := []toolkit.M{}
+					ms := []codekit.M{}
 					err := cur.Fetchs(&ms, 0)
 					cv.So(err, cv.ShouldBeNil)
 					cv.So(len(ms), cv.ShouldBeGreaterThan, 0)
@@ -121,7 +115,7 @@ func TestQueryObj(t *testing.T) {
 				cv.So(err, cv.ShouldBeNil)
 				cv.So(len(ms), cv.ShouldBeGreaterThan, 0)
 
-				cv.Printf("\nResults:\n%s\n", toolkit.JsonString(ms))
+				cv.Printf("\nResults:\n%s\n", codekit.JsonString(ms))
 			})
 		})
 	})
@@ -136,7 +130,7 @@ func TestQueryDelete(t *testing.T) {
 		cv.Convey("insert data 100x ", func() {
 			for i := 0; i < 100; i++ {
 				cmd := dbflex.From(tableName).Insert()
-				_, err := conn.Execute(cmd, toolkit.M{}.Set("data", newDataObject(toolkit.RandomString(10), "QD")))
+				_, err := conn.Execute(cmd, codekit.M{}.Set("data", newDataObject(codekit.RandomString(10), "QD")))
 				if err != nil {
 					cv.Println("error saving.", err.Error())
 				}
@@ -189,7 +183,7 @@ func TestUpdate(t *testing.T) {
 			for _, m := range ms {
 				cmd := dbflex.From(tableName).Update("datagroup").Where(dbflex.Eq("id", m.ID))
 				m.DataGroup = "QA"
-				_, err = conn.Execute(cmd, toolkit.M{}.Set("data", m))
+				_, err = conn.Execute(cmd, codekit.M{}.Set("data", m))
 				if err != nil {
 					break
 				}
@@ -218,7 +212,7 @@ func TestTrx(t *testing.T) {
 		cmd := dbflex.From(tableName).Insert()
 		for i := 0; i < 10 && err == nil; i++ {
 			data := newDataObject(fmt.Sprintf("tx_%d", i), groupcode)
-			_, err = conn.Execute(cmd, toolkit.M{}.Set("data", data))
+			_, err = conn.Execute(cmd, codekit.M{}.Set("data", data))
 		}
 		cv.So(err, cv.ShouldBeNil)
 

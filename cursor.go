@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"git.kanosolution.net/kano/dbflex/drivers/rdbms"
-	"github.com/eaciit/toolkit"
+	"github.com/sebarcode/codekit"
 )
 
 // Cursor represent cursor object. Inherits Cursor object of rdbms drivers and implementation of dbflex.ICursor
@@ -39,11 +39,11 @@ func (c *Cursor) CastValue(value interface{}, typeName string) (interface{}, err
 			} else if v == "" {
 				d = ""
 			} else {
-				if f := toolkit.ToFloat64(v, 4, toolkit.RoundingAuto); f != 0 {
+				if f := codekit.ToFloat64(v, 4, codekit.RoundingAuto); f != 0 {
 					d = f
 				} else if dt, err := time.Parse(time.RFC3339, v); err == nil {
 					d = dt
-				} else if dt = toolkit.String2Date(v, "yyyy-MM-dd HH:mm:ss"); dt.Year() > 1900 {
+				} else if dt = codekit.String2Date(v, "yyyy-MM-dd HH:mm:ss"); dt.Year() > 1900 {
 					d = dt
 				} else {
 					d = v
@@ -52,15 +52,15 @@ func (c *Cursor) CastValue(value interface{}, typeName string) (interface{}, err
 		} else {
 			typeName := strings.ToLower(typeName)
 			if strings.HasPrefix(typeName, "float32") {
-				d = toolkit.ToFloat32(v, 4, toolkit.RoundingAuto)
+				d = codekit.ToFloat32(v, 4, codekit.RoundingAuto)
 			} else if strings.HasPrefix(typeName, "float64") {
-				d = toolkit.ToFloat64(v, 4, toolkit.RoundingAuto)
+				d = codekit.ToFloat64(v, 4, codekit.RoundingAuto)
 			} else if strings.HasPrefix(typeName, "int") && !strings.HasPrefix(typeName, "interface") {
-				d = toolkit.ToInt(v, toolkit.RoundingAuto)
+				d = codekit.ToInt(v, codekit.RoundingAuto)
 			} else if strings.HasPrefix(typeName, "time") {
 				if dt, err := time.Parse(time.RFC3339, v); err == nil {
 					d = dt
-				} else if dt = toolkit.String2Date(v, "yyyy-MM-dd HH:mm:ss"); dt.Year() > 0 {
+				} else if dt = codekit.String2Date(v, "yyyy-MM-dd HH:mm:ss"); dt.Year() > 0 {
 					d = dt
 				}
 			} else if strings.HasPrefix(typeName, "bool") {

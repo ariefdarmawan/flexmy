@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"git.kanosolution.net/kano/dbflex"
-	"github.com/eaciit/toolkit"
 
 	"git.kanosolution.net/kano/dbflex/drivers/rdbms"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/sebarcode/codekit"
 )
 
 // Connection implementation of dbflex.IConnection
@@ -32,14 +32,14 @@ func init() {
 
 // Connect to database instance
 func (c *Connection) Connect() error {
-	sqlconnstring := toolkit.Sprintf("tcp(%s)/%s", c.Host, c.Database)
+	sqlconnstring := fmt.Sprintf("tcp(%s)/%s", c.Host, c.Database)
 	if c.User != "" {
-		sqlconnstring = toolkit.Sprintf("%s:%s@%s", c.User, c.Password, sqlconnstring)
+		sqlconnstring = fmt.Sprintf("%s:%s@%s", c.User, c.Password, sqlconnstring)
 	}
 	configs := strings.Join(func() []string {
 		var out []string
 		for k, v := range c.Config {
-			out = append(out, toolkit.Sprintf("%s=%s", k, v))
+			out = append(out, fmt.Sprintf("%s=%s", k, v))
 		}
 		return out
 	}(), "&")
@@ -123,7 +123,7 @@ func createCommandForCreate(name string, keys []string, obj interface{}) string 
 	fields := []string{}
 	for idx := 0; idx < fieldNum; idx++ {
 		ft := t.Field(idx)
-		alias := ft.Tag.Get(toolkit.TagName())
+		alias := ft.Tag.Get(codekit.TagName())
 		if alias == "-" {
 			continue
 		}
@@ -134,7 +134,7 @@ func createCommandForCreate(name string, keys []string, obj interface{}) string 
 		ftName := strings.ToLower(ft.Name)
 		dataType := getDataType(ftName)
 		ftxt := fmt.Sprintf("%s %s", fieldName, dataType)
-		if toolkit.HasMember(keys, fieldName) {
+		if codekit.HasMember(keys, fieldName) {
 			ftxt = ftxt + " NOT NULL PRIMARY KEY"
 		}
 		fields = append(fields, ftxt)
@@ -173,7 +173,7 @@ func createCommandForUpdate(name string, keys []string, obj interface{}, c *Conn
 	for idx := 0; idx < fieldNum; idx++ {
 		ft := t.Field(idx)
 		fieldName := ft.Name
-		alias := ft.Tag.Get(toolkit.TagName())
+		alias := ft.Tag.Get(codekit.TagName())
 		if alias == "-" {
 			continue
 		}
